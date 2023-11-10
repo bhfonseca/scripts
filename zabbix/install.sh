@@ -54,6 +54,7 @@ echo -e "Início do script $0 em: $(date +%d/%m/%Y-"("%H:%M")")\n"
     apt install nginx -y &>>$LOG;
     echo -e "Nginx instalado\n"
     rm /etc/nginx/sites-enabled/*
+    rm /var/www/html/*
 
 #--------------------MariaDB--------------------#
     echo -e "Iniciando instalação do MariaDB"
