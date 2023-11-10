@@ -51,7 +51,7 @@ echo -e "Início do script $0 em: $(date +%d/%m/%Y-"("%H:%M")")\n"
 #--------------------Nginx--------------------#
 
     echo -e "Instalando o Nginx"
-    apt install nginx -y &>>$LOG;
+    apt install nginx-full -y &>>$LOG;
     echo -e "Nginx instalado\n"
     rm /etc/nginx/sites-enabled/*
     rm /var/www/html/*
