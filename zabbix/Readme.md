@@ -7,6 +7,7 @@
 <p>As ferramentas que serão instaladas serão:</p>
 
 - Zabbix 6.4
+- Grafana
 - Nginx
 - PHP-FPM
 - MariaDB
