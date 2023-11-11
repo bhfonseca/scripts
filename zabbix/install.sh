@@ -1,17 +1,28 @@
 #!/bin/bash
 # Autor: Bruno Honorato da Fonseca
 # Data da criação: 08/11/2023
-# Script para instalação do ZabbixServer 6 no Debian 12 (Bookworm)
+# Ultima alteração: 10/11/2023
+# Script para instalação do ZabbixServer 6.4 e Grafana no Debian 12 (Bookworm)
 # Script deve ser executado com usuário root
 
 #--------------------Funções--------------------#
+    clear
     # Função para gerar senhas
         function mkpass(){
             tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 16 ; echo ''
         }
-
+#--------------------Inicio--------------------#
+    echo -e "Início do script $0 em: $(date +%d/%m/%Y-"("%H:%M")")\n"  &>>$LOG
+    HORAINICIAL=$(date +%T)
+#--------------------Verifica Sistema--------------------#
+    if [ "$(lsb_release -cs)" = "bookworm" ]; then
+        echo "O sistema é Debian 12. Executando o script..."
+    else
+        echo "Este script é destinado apenas ao Debian 12. O sistema atual é $(lsb_release -rcis)."
+        exit 1
+    fi
 #--------------------Verifica Usuário--------------------#
-    clear
+
     if [ $(id -u) == "0" ] 
     then
 		echo -e "O usuário é Root, continuando com o script..."
@@ -28,7 +39,7 @@
     PASSZBX=$(mkpass)
     PASSROOT=$(mkpass)
 
-echo -e "Início do script $0 em: $(date +%d/%m/%Y-"("%H:%M")")\n"
+
 #--------------------Preparando sistema--------------------#
     
     echo -e "Atualizando o sistema... Aguarde"
@@ -37,9 +48,9 @@ echo -e "Início do script $0 em: $(date +%d/%m/%Y-"("%H:%M")")\n"
     apt autoremove -y &>>$LOG
     apt autoclean &>>$LOG
     echo -e "Instalando Utilitários e Dependencias... Aguarde"
-    apt install ifupdown2 net-tools iotop nethogs nmon mtr curl gnupg2 ca-certificates lsb-release debian-archive-keyring -y &>>$LOG;    
+    apt install ifupdown2 net-tools iotop nethogs nmon mtr curl gnupg2 ca-certificates lsb-release debian-archive-keyring -y &>>$LOG 
     #Ajusta o PATH do sistema
-    export PATH=$PATH'/usr/local/sbin:/usr/local/bin:/usr/sbin:/sbin:/bin' &>>$LOG;
+    export PATH=$PATH'/usr/local/sbin:/usr/local/bin:/usr/sbin:/sbin:/bin' &>>$LOG
     echo -e "Utilitários e dependencias instalados\n"
 
 #--------------------Backup--------------------#
@@ -114,22 +125,40 @@ echo -e "Início do script $0 em: $(date +%d/%m/%Y-"("%H:%M")")\n"
     
     echo -e "Aplicando configurações adicionais"
     #Alterando porta e server name
-    sed -i '/^#/d' /etc/zabbix/nginx.conf
-    sed -i 's/listen[[:space:]]*8080;/listen 80;/' /etc/zabbix/nginx.conf
+    sudo sed -i 's/^#//' /etc/zabbix/nginx.conf
+    sed -i 's/listen[[:space:]]*8080;/listen 81;/' /etc/zabbix/nginx.conf
     sed -i 's/server_name[[:space:]]*example\.com;/server_name zabbix;/' /etc/zabbix/nginx.conf
+    echo -e "Zabbix instalado\n"
 
     #Movendo parametros
     mv $PARAM /etc/zabbix/ -f
 
+#--------------------Grafana--------------------#
+
+    echo -e "Instalando Grafana"
+    apt install -y adduser libfontconfig1 musl &>>$LOG
+    wget https://dl.grafana.com/enterprise/release/grafana-enterprise_10.2.0_amd64.deb &>>$LOG
+    dpkg -i grafana-enterprise_10.2.0_amd64.deb &>>$LOG
+    echo -e "Instalando plugin para o zabbix"
+    grafana-cli plugins install alexanderzobnin-zabbix-app &>>$LOG
+    echo -e "Grafana instalado\n"
+
 #--------------------Serviços--------------------#
 
-    echo -e "Habilitando serviços\n"
-    systemctl restart zabbix-server zabbix-agent nginx php8.2-fpm &>>$LOG
-    systemctl enable zabbix-server zabbix-agent nginx php8.2-fpm &>>$LOG
+    echo -e "Reiniciando serviços\n"
+    systemctl restart zabbix-server zabbix-agent nginx php8.2-fpm grafana-server &>>$LOG
+    systemctl enable zabbix-server zabbix-agent nginx php8.2-fpm grafana-server &>>$LOG
 
 #--------------------Finalização--------------------#
-echo -e "Fim do script $0 em: $(date +%d/%m/%Y-"("%H:%M")")\n"
-echo -e "Senha para acesso ao banco de dados esta localizada em /etc/zabbix/parametros.conf"
-echo -e "Pressione <Enter> para concluir o processo."
-read
-exit 1    
+	HORAFINAL=$(date +%T)
+	HORAINICIAL01=$(date -u -d "$HORAINICIAL" +"%s")
+	HORAFINAL01=$(date -u -d "$HORAFINAL" +"%s")
+	TEMPO=$(date -u -d "0 $HORAFINAL01 sec - $HORAINICIAL01 sec" +"%H:%M:%S")
+	echo -e "Tempo gasto para execução do script $0: $TEMPO"
+    echo -e "Fim do script $0 em: $(date +%d/%m/%Y-"("%H:%M")")\n"  &>>$LOG
+    echo -e "Para acessar o Zabbix abra no navegador http://$(hostname -I | awk '{print $1}'):81"
+    echo -e "Para acessar o Grafana abra no navegador http://$(hostname -I | awk '{print $1}'):3000"
+    echo -e "Senha para acesso ao banco de dados esta localizada em /etc/zabbix/parametros.conf"
+    echo -e "Pressione <Enter> para concluir o processo."
+    read
+    exit 1    
